@@ -20,3 +20,7 @@ web-build/
 
 # test scripts that may contain credentials
 scripts/test-*.js
+.env
+.env.*
+.env.local
+
