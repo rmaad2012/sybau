@@ -11,9 +11,12 @@ const Avatar = ({
     rounded=theme.radius.md,
     style={}
 }) => {
+  // Safely get the image source, handling undefined/null cases
+  const imageSource = uri ? getUserImageSrc(uri) : require('../assets/images/defaultUser.png');
+  
   return (
     <Image 
-        source={getUserImageSrc(uri)} 
+        source={imageSource} 
         transition={100}
         style={[styles.avatar, {height: size, width: size, borderRadius: rounded}, style]}
     />

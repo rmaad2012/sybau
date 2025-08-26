@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { theme } from '../../constants/theme'
 import { Feather, Ionicons, SimpleLineIcons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { getUserImageSrc } from '../../services/imageService'
+
 import { Image } from 'expo-image';
 import Header from '../../components/Header'
 import ScreenWrapper from '../../components/ScreenWrapper'
@@ -21,7 +21,10 @@ const Profile = () => {
   const {user, setAuth} = useAuth();
   const router = useRouter();
   const [posts, setPosts] = useState([]);
-  const [hasMore, setHasMore] = useState(true);
+  const [hasMore] = useState(true);
+
+  // Add debugging to see what's happening with user data
+  console.log('Profile component - user data:', user);
 
   // first do this
 
@@ -61,6 +64,17 @@ const Profile = () => {
     ]);
   }
 
+  // Don't render if user is not available yet
+  if (!user) {
+    return (
+      <ScreenWrapper bg="white">
+        <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
+          <Text>Loading profile...</Text>
+        </View>
+      </ScreenWrapper>
+    );
+  }
+
   return (
     <ScreenWrapper bg="white">
       {/* first create UserHeader and use it here, then move it to header comp when implementing user posts */}
@@ -98,6 +112,15 @@ const Profile = () => {
 }
 
 const UserHeader = ({user, handleLogout, router})=>{
+  // Add safety check for user data
+  if (!user) {
+    return (
+      <View style={{flex: 1, backgroundColor:'white', alignItems: 'center', justifyContent: 'center'}}>
+        <Text>Loading user data...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={{flex: 1, backgroundColor:'white'}}> 
         <View>
@@ -112,7 +135,7 @@ const UserHeader = ({user, handleLogout, router})=>{
             {/* avatar */}
             <View style={styles.avatarContainer}>
               <Avatar
-                uri={user?.image}
+                uri={user.image}
                 size={hp(12)}
                 rounded={theme.radius.xxl*1.4}
               />
@@ -125,8 +148,8 @@ const UserHeader = ({user, handleLogout, router})=>{
 
             {/* username & address */}
             <View style={{alignItems: 'center', gap: 4}}>
-              <Text style={styles.userName}> { user && user.name } </Text>
-              <Text style={styles.infoText}> {user && user.address} </Text>
+              <Text style={styles.userName}>{user.name || 'No Name'}</Text>
+              <Text style={styles.infoText}>{user.address || 'No Address'}</Text>
             </View>
 
             {/* email, phone */}
@@ -135,7 +158,7 @@ const UserHeader = ({user, handleLogout, router})=>{
               <View style={styles.info}>
                 <Icon name="mail" size={20} color={theme.colors.textLight} />
                 <Text style={[styles.infoText, {fontSize: hp(1.8)}]}> 
-                    {user && user.email}
+                    {user.email || 'No Email'}
                   </Text>
               </View>
               {

@@ -157,6 +157,9 @@ const HomeScreen = () => {
             <Pressable onPress={()=> router.push('newPost')}>
               <Icon name="plus" size={hp(3.2)} strokeWidth={2} color={theme.colors.text}  />
             </Pressable>
+            <Pressable style={styles.searchIcon} onPress={() => {}}>
+              <Icon name="search" size={hp(2.5)} strokeWidth={2} color="rgba(0,0,0,0.6)" />
+            </Pressable>
             <Pressable onPress={()=> router.push('profile')}>
               <Avatar 
                 uri={user?.avatar_url || user?.image} 
@@ -219,8 +222,9 @@ const HomeScreen = () => {
       {/* Bottom Navigation Bar */}
       <BottomNavigation
         scrollY={scrollY}
-        onDiscoveryPress={() => router.push('search')}
+        onDiscoveryPress={() => router.push('discovery')}
         onPostPress={() => router.push('newPost')}
+        onPostsPress={() => {}} // Already on home page
         onPeoplePress={() => router.push('profile')}
       />
     </ScreenWrapper>
@@ -284,6 +288,9 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: hp(1.2),
     fontWeight: theme.fonts.bold
+  },
+  searchIcon: {
+    padding: wp(1),
   },
 
 })

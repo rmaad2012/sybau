@@ -7,6 +7,7 @@ import {
   Image as RNImage,
   Alert,
   TouchableOpacity,
+  TextInput,
 } from "react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import ScreenWrapper from "../../components/ScreenWrapper";
@@ -31,6 +32,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { Video, AVPlaybackStatus } from "expo-av";
 import { createOrUpdatePost } from "../../services/postService";
+import { createDiscoveryVideo } from "../../services/discoveryService";
 import Header from "../../components/Header";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Avatar from "../../components/Avatar";
@@ -44,6 +46,10 @@ const NewPost = () => {
   const [file, setFile] = useState(null);
   const [body, setBody] = useState(""); // Changed from ref to state
   const [loading, setLoading] = useState(false);
+  const [postType, setPostType] = useState('regular'); // 'regular' or 'discovery'
+  const [caption, setCaption] = useState(""); // For discovery videos
+  const [hashtags, setHashtags] = useState([]); // For discovery videos
+  const [location, setLocation] = useState(""); // For discovery videos
   const editorRef = useRef(null);
   const router = useRouter();
 
@@ -87,29 +93,67 @@ const NewPost = () => {
   const onSubmit = async () => {
     try {
       // validate data
-      if (!body.trim() && !file) {
-        Alert.alert("Post", "Please choose an image or add post body!");
+      if (!file) {
+        Alert.alert("Post", "Please choose a video or image!");
         return;
       }
 
-      console.log('Creating post with data:', { body: body.trim(), file, user_id: user?.id });
+      // For discovery videos, ensure it's actually a video
+      if (postType === 'discovery') {
+        if (!caption.trim()) {
+          Alert.alert("Discovery Video", "Please add a caption for your discovery video!");
+          return;
+        }
+        
+        // Check if file is a video
+        const isVideo = getFileType(file) === 'video';
+        if (!isVideo) {
+          Alert.alert("Discovery Video", "Discovery videos must be video files, not images!");
+          return;
+        }
+      }
+
+      console.log('Creating post with data:', { 
+        postType, 
+        body: body.trim(), 
+        caption: caption.trim(),
+        file, 
+        user_id: user?.id 
+      });
 
       setLoading(true);
-      let data = {
-        file,
-        body: body.trim(),
-        user_id: user?.id, // Fixed: use user_id consistently
-      };
-      if (post && post.id) data.id = post.id;
+      let res;
 
-      console.log('Final post data being sent:', data);
+      if (postType === 'discovery') {
+        // Create discovery video
+        let discoveryData = {
+          file,
+          user_id: user?.id,
+          caption: caption.trim(),
+          hashtags: hashtags,
+          location: location,
+          duration: 0 // You can calculate this later
+        };
+        res = await createDiscoveryVideo(discoveryData);
+      } else {
+        // Create regular post
+        let data = {
+          file,
+          body: body.trim(),
+          user_id: user?.id,
+        };
+        if (post && post.id) data.id = post.id;
+        res = await createOrUpdatePost(data);
+      }
 
-      let res = await createOrUpdatePost(data);
       console.log('Post creation result:', res);
       setLoading(false);
       if (res.success) {
         setFile(null);
         setBody("");
+        setCaption("");
+        setHashtags([]);
+        setLocation("");
         router.back();
       } else {
         Alert.alert("Post", res.msg);
@@ -156,7 +200,13 @@ const NewPost = () => {
   return (
     <ScreenWrapper bg="white">
       <View style={styles.container}>
-        <Header title="Create Post" mb={15} />
+        <View style={styles.headerContainer}>
+          <Pressable style={styles.backButton} onPress={() => router.back()}>
+            <Icon name="arrowLeft" size={hp(2.5)} color={theme.colors.text} />
+          </Pressable>
+          <Text style={styles.headerTitle}>Create Post</Text>
+          <View style={styles.headerSpacer} />
+        </View>
 
         <ScrollView contentContainerStyle={{ gap: 20 }}>
           {/* header */}
@@ -172,12 +222,67 @@ const NewPost = () => {
               <Text style={styles.publicText}>Public</Text>
             </View>
           </View>
-          <View style={styles.textEditor}>
-            <RichTextEditor
-              editorRef={editorRef}
-              onChange={(body) => setBody(body)}
-            />
+          {/* Post Type Selector */}
+          <View style={styles.postTypeSelector}>
+            <Text style={styles.postTypeLabel}>Post Type:</Text>
+            <View style={styles.postTypeButtons}>
+              <Pressable 
+                style={[
+                  styles.postTypeButton, 
+                  postType === 'regular' && styles.postTypeButtonActive
+                ]}
+                onPress={() => setPostType('regular')}
+              >
+                <Text style={[
+                  styles.postTypeButtonText,
+                  postType === 'regular' && styles.postTypeButtonTextActive
+                ]}>Regular Post</Text>
+              </Pressable>
+              <Pressable 
+                style={[
+                  styles.postTypeButton, 
+                  postType === 'discovery' && styles.postTypeButtonActive
+                ]}
+                onPress={() => setPostType('discovery')}
+              >
+                <Text style={[
+                  styles.postTypeButtonText,
+                  postType === 'discovery' && styles.postTypeButtonTextActive
+                ]}>Discovery Video</Text>
+              </Pressable>
+            </View>
           </View>
+
+          {/* Content Input - Different for each post type */}
+          {postType === 'regular' ? (
+            <View style={styles.textEditor}>
+              <RichTextEditor
+                editorRef={editorRef}
+                onChange={(body) => setBody(body)}
+              />
+            </View>
+          ) : (
+            <View style={styles.discoveryInputs}>
+              <Text style={styles.inputLabel}>Caption</Text>
+              <TextInput
+                style={styles.captionInput}
+                placeholder="Write a caption for your discovery video..."
+                placeholderTextColor={theme.colors.textLight}
+                value={caption}
+                onChangeText={setCaption}
+                multiline
+                numberOfLines={3}
+              />
+              <Text style={styles.inputLabel}>Location (optional)</Text>
+              <TextInput
+                style={styles.locationInput}
+                placeholder="Add location..."
+                placeholderTextColor={theme.colors.textLight}
+                value={location}
+                onChangeText={setLocation}
+              />
+            </View>
+          )}
           {file && (
             <View style={styles.file}>
               {/* {
@@ -224,11 +329,15 @@ const NewPost = () => {
             </View>
           )}
           <View style={styles.media}>
-            <Text style={styles.addImageText}>Add to your post</Text>
+            <Text style={styles.addImageText}>
+              {postType === 'discovery' ? 'Add video to your discovery post' : 'Add to your post'}
+            </Text>
             <View style={styles.mediaIcons}>
-              <TouchableOpacity onPress={() => onPick(true)}>
-                <Icon name="image" size={30} color={theme.colors.dark} />
-              </TouchableOpacity>
+              {postType === 'regular' && (
+                <TouchableOpacity onPress={() => onPick(true)}>
+                  <Icon name="image" size={30} color={theme.colors.dark} />
+                </TouchableOpacity>
+              )}
               <TouchableOpacity onPress={() => onPick(false)}>
                 <Icon name="video" size={33} color={theme.colors.dark} />
               </TouchableOpacity>
@@ -254,6 +363,27 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     paddingHorizontal: wp(4),
     gap: 15,
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+    paddingTop: hp(1),
+  },
+  backButton: {
+    padding: wp(2),
+    borderRadius: theme.radius.sm,
+  },
+  headerTitle: {
+    fontSize: hp(2.2),
+    fontWeight: theme.fonts.bold,
+    color: theme.colors.text,
+    flex: 1,
+    textAlign: 'center',
+  },
+  headerSpacer: {
+    width: hp(4.5), // Same width as back button for centering
   },
   title: {
     // marginBottom: 10,
@@ -333,6 +463,67 @@ const styles = StyleSheet.create({
     // shadowOffset: {width: 0, height: 3},
     // shadowOpacity: 0.6,
     // shadowRadius: 8
+  },
+  postTypeSelector: {
+    marginBottom: 15,
+  },
+  postTypeLabel: {
+    fontSize: hp(1.8),
+    fontWeight: theme.fonts.semibold,
+    color: theme.colors.text,
+    marginBottom: 10,
+  },
+  postTypeButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  postTypeButton: {
+    flex: 1,
+    paddingVertical: hp(1.5),
+    paddingHorizontal: wp(4),
+    borderRadius: theme.radius.md,
+    borderWidth: 2,
+    borderColor: theme.colors.gray,
+    alignItems: 'center',
+  },
+  postTypeButtonActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  postTypeButtonText: {
+    fontSize: hp(1.6),
+    fontWeight: theme.fonts.medium,
+    color: theme.colors.text,
+  },
+  postTypeButtonTextActive: {
+    color: 'white',
+  },
+  discoveryInputs: {
+    gap: 15,
+  },
+  inputLabel: {
+    fontSize: hp(1.8),
+    fontWeight: theme.fonts.semibold,
+    color: theme.colors.text,
+  },
+  captionInput: {
+    borderWidth: 1,
+    borderColor: theme.colors.gray,
+    borderRadius: theme.radius.md,
+    padding: wp(3),
+    fontSize: hp(1.6),
+    color: theme.colors.text,
+    minHeight: hp(8),
+    textAlignVertical: 'top',
+  },
+  locationInput: {
+    borderWidth: 1,
+    borderColor: theme.colors.gray,
+    borderRadius: theme.radius.md,
+    padding: wp(3),
+    fontSize: hp(1.6),
+    color: theme.colors.text,
+    height: hp(5),
   },
 });
 

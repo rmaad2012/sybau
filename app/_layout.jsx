@@ -6,14 +6,17 @@ import { supabase } from '../lib/supabase'
 import { getUserData } from '../services/userService'
 import { LogBox } from 'react-native';
 import * as Linking from 'expo-linking';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 LogBox.ignoreLogs(['Warning: TNodeChildrenRenderer', 'Warning: MemoizedTNodeRenderer', 'Warning: TRenderEngineProvider']); // Ignore log notification by message
 
 const _layout = () => {
     
   return (
-    <AuthProvider>
-        <MainLayout />
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+          <MainLayout />
+      </AuthProvider>
+    </GestureHandlerRootView>
     
   )
 }

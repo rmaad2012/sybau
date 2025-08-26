@@ -8,6 +8,7 @@ const BottomNavigation = ({
   scrollY, 
   onDiscoveryPress, 
   onPostPress, 
+  onPostsPress,
   onPeoplePress,
   style 
 }) => {
@@ -23,6 +24,20 @@ const BottomNavigation = ({
         const currentScrollY = value
         const previousScrollY = lastScrollY.current
         const scrollDifference = Math.abs(currentScrollY - previousScrollY)
+        
+        // Don't hide navigation during bounce/refresh (negative scroll values)
+        if (currentScrollY < 0) {
+          // During bounce/refresh, keep navigation visible
+          if (!isVisible) {
+            setIsVisible(true)
+            Animated.timing(bottomNavTranslateY, {
+              toValue: 0,
+              duration: 100,
+              useNativeDriver: true,
+            }).start()
+          }
+          return
+        }
         
         // Only trigger if scroll difference is significant enough (prevents tiny movements)
         if (scrollDifference < 5) return
@@ -59,7 +74,7 @@ const BottomNavigation = ({
 
       return () => scrollY.removeListener(listener)
     }
-  }, [scrollY])
+  }, [scrollY, isVisible])
 
   return (
     <Animated.View 
@@ -73,7 +88,7 @@ const BottomNavigation = ({
       ]}
     >
       <Pressable style={styles.navItem} onPress={onDiscoveryPress}>
-        <Text style={styles.emojiIcon}>🔍</Text>
+        <Text style={styles.emojiIcon}>🎬</Text>
         <Text style={styles.navText}>Discovery</Text>
       </Pressable>
       
@@ -82,9 +97,14 @@ const BottomNavigation = ({
         <Text style={styles.navText}>Post</Text>
       </Pressable>
       
+      <Pressable style={styles.navItem} onPress={onPostsPress}>
+        <Text style={styles.emojiIcon}>🏠</Text>
+        <Text style={styles.navText}>Home</Text>
+      </Pressable>
+      
       <Pressable style={styles.navItem} onPress={onPeoplePress}>
         <Text style={styles.emojiIcon}>👥</Text>
-        <Text style={styles.navText}>Discover People</Text>
+        <Text style={styles.navText}>People</Text>
       </Pressable>
     </Animated.View>
   )
