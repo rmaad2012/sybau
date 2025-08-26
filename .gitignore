@@ -11,4 +11,9 @@ web-build/
 # misc
 *.log
 *.lock
+
+# secrets - NEVER commit these!
 .env
+.env.local
+.env.*
+*.env
